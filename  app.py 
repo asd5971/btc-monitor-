@@ -1,0 +1,43 @@
+from flask import Flask, jsonify
+import requests
+import os
+
+app = Flask(__name__)
+
+# CryptoPanic API Key（从环境变量读取）
+CRYPTOPANIC_API_KEY = os.environ.get('CRYPTOPANIC_API_KEY', '')
+
+@app.route('/')
+def home():
+    return "BTC 监控器正在运行！"
+
+@app.route('/api/news')
+def get_news():
+    """获取加密货币实时新闻"""
+    try:
+        if not CRYPTOPANIC_API_KEY:
+            return jsonify({'status': 'error', 'message': '未配置 API Key'}), 500
+
+        url = "https://cryptopanic.com/api/v1/posts/"
+        params = {
+            "auth_token": CRYPTOPANIC_API_KEY,
+            "public": "true",
+            "kind": "news"
+        }
+        response = requests.get(url, params=params, timeout=10)
+        data = response.json()
+
+        news_list = []
+        for item in data.get('results', [])[:10]:
+            news_list.append({
+                "title": item.get('title'),
+                "url": item.get('currencies', [])
+            })
+            
+        return jsonify({'status': 'success', 'data': news_list})
+    except Exception as e:
+        return jsonify({'status': 'error', 'message': str(e)}), 500
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port)
